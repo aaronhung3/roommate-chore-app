@@ -37,7 +37,6 @@ function RegisterScreen() {
 
             router.replace('/(tabs)');
 
-
         } catch (error: any) {
             setError(error.response?.data?.error || 'Something went wrong');
         } finally {
