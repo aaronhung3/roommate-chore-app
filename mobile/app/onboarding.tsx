@@ -72,10 +72,7 @@ function OnboardingScreen() {
                 <Text style={onboardingScreenStyles.buttonText}>Join Group</Text>
             </TouchableOpacity>
 
-            <View style={onboardingScreenStyles.line} />
             <Text style={onboardingScreenStyles.text}>or</Text>
-            <View style={onboardingScreenStyles.line} />
-
 
             <TextInput
                 style={onboardingScreenStyles.input}
