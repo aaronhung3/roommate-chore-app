@@ -1,13 +1,5 @@
 const cron = require('node-cron');
-const db = require('../db');
-
-const getWeekStart = () => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now.setDate(diff));
-    return monday.toISOString().split('T')[0];
-};
+const { query, getWeekStart } = require('../db');
 
 const getNextWeekStart = () => {
     const now = new Date();
@@ -21,13 +13,13 @@ const resetWeek = async () => {
     console.log('Running weekly chore reset...');
 
     try {
-        const templatesResult = await db.query('SELECT * FROM chore_templates');
+        const templatesResult = await query('SELECT * FROM chore_templates');
         const templates = templatesResult.rows;
 
         for (const template of templates) {
             const nextIndex = (template.rotation_index + 1)% template.rotation_order.length;
 
-            await db.query('UPDATE chore_templates SET rotation_index = $1 WHERE id = $2',
+            await query('UPDATE chore_templates SET rotation_index = $1 WHERE id = $2',
         [nextIndex, template.id]);
 
         const weekStart = getNextWeekStart();
@@ -37,7 +29,7 @@ const resetWeek = async () => {
 
         const assignedTo = template.rotation_order[nextIndex];
 
-        await db.query(`INSERT INTO chore_assignments (template_id, group_id, assigned_to, week_start, due_date)
+        await query(`INSERT INTO chore_assignments (template_id, group_id, assigned_to, week_start, due_date)
          VALUES ($1, $2, $3, $4, $5)`,
         [template.id, template.group_id, assignedTo, weekStart, dueDate]);
 

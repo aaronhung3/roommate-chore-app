@@ -1,14 +1,23 @@
 const express = require('express');
-const db = require('../db');
+const { query, getWeekStart } = require('../db');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// POST /chores — create a new chore template
+/*
+{
+    "groupId": "your-group-id",
+    "name": "Dishes",
+    "description": "Wash and dry all dishes",
+    "rotationOrder": ["user-id-1", "user-id-2"]
+}
+*/
 router.post('/', auth, async (req, res) => {
     const { groupId, name, description, rotationOrder } = req.body;
 
     try {
-        const membership = await db.query('SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, req.userId]);
+        const membership = await query('SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, req.userId]);
 
         if (membership.rows.length === 0) {
             return res.status(403).json({ error: 'You are not a member of this group' });
@@ -18,7 +27,7 @@ router.post('/', auth, async (req, res) => {
             return res.status(403).json({ error: 'Only admins can create chores' })
         }
 
-        const result = await db.query(`INSERT INTO chore_templates (group_id, name, description, rotation_order, rotation_index) VALUES ($1, $2, $3, $4, 0) RETURNING *`, [groupId, name, description, rotationOrder]);
+        const result = await query(`INSERT INTO chore_templates (group_id, name, description, rotation_order, rotation_index) VALUES ($1, $2, $3, $4, 0) RETURNING *`, [groupId, name, description, rotationOrder]);
 
         const template = result.rows[0];
 
@@ -39,7 +48,7 @@ router.get('/:groupId', auth, async (req, res) => {
 
     try {
         // Make sure the user is a member of this group
-        const membership = await db.query(
+        const membership = await query(
         'SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2',
         [groupId, req.userId]
         );
@@ -49,10 +58,10 @@ router.get('/:groupId', auth, async (req, res) => {
         }
 
         // Get current week's Monday
-        const weekStart = getWeekStart();
+        const weekStart = await getWeekStart();
 
         // Get all assignments for this group this week with user details
-        const result = await db.query(
+        const result = await query(
         `SELECT 
             ca.id,
             ca.week_start,
@@ -84,7 +93,7 @@ router.patch('/:id/complete', auth, async (req, res) => {
 
     try {
         // Get the assignment
-        const assignmentResult = await db.query(
+        const assignmentResult = await query(
         'SELECT * FROM chore_assignments WHERE id = $1',
         [id]
         );
@@ -96,7 +105,7 @@ router.patch('/:id/complete', auth, async (req, res) => {
         const assignment = assignmentResult.rows[0];
 
         // Make sure the user is in the group
-        const membership = await db.query(
+        const membership = await query(
         'SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2',
         [assignment.group_id, req.userId]
         );
@@ -106,7 +115,7 @@ router.patch('/:id/complete', auth, async (req, res) => {
         }
 
         // Mark it complete
-        const result = await db.query(
+        const result = await query(
         `UPDATE chore_assignments 
         SET completed_at = NOW(), completed_by = $1
         WHERE id = $2 RETURNING *`,
@@ -127,7 +136,7 @@ router.delete('/:id', auth, async (req, res) => {
 
     try {
         // Make sure the user is an admin
-        const templateResult = await db.query(
+        const templateResult = await query(
         'SELECT * FROM chore_templates WHERE id = $1',
         [id]
         );
@@ -138,7 +147,7 @@ router.delete('/:id', auth, async (req, res) => {
 
         const template = templateResult.rows[0];
 
-        const membership = await db.query(
+        const membership = await query(
         'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
         [template.group_id, req.userId]
         );
@@ -147,7 +156,7 @@ router.delete('/:id', auth, async (req, res) => {
         return res.status(403).json({ error: 'Only admins can delete chores' });
         }
 
-        await db.query('DELETE FROM chore_templates WHERE id = $1', [id]);
+        await query('DELETE FROM chore_templates WHERE id = $1', [id]);
 
         res.status(200).json({ message: 'Chore deleted' });
 
@@ -159,28 +168,18 @@ router.delete('/:id', auth, async (req, res) => {
 
 // --- Helper functions ---
 
-// Returns this week's Monday as a YYYY-MM-DD string
-const getWeekStart = () => {
-    const now = new Date();
-    const day = now.getDay(); // 0 = Sunday, 1 = Monday...
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now.setDate(diff));
-    return monday.toISOString().split('T')[0];
-};
-
 // Creates a chore assignment for the current week from a template
 const createAssignment = async (template) => {
-    const weekStart = getWeekStart();
-
-    // Due date is Sunday (6 days after Monday)
-    const due = new Date(weekStart);
-    due.setDate(due.getDate() + 6);
-    const dueDate = due.toISOString().split('T')[0];
+    const weekStart = await getWeekStart();
+    const dueDateResult = await query(
+        `SELECT (date_trunc('week', current_date)::date + interval '6 days')::date AS due_date`
+    );
+    const dueDate = dueDateResult.rows[0].due_date;
 
     // Pick the assigned user based on rotation_index
     const assignedTo = template.rotation_order[template.rotation_index];
 
-    const result = await db.query(
+    const result = await query(
         `INSERT INTO chore_assignments (template_id, group_id, assigned_to, week_start, due_date)
         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
         [template.id, template.group_id, assignedTo, weekStart, dueDate]

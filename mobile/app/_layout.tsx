@@ -5,7 +5,7 @@ import { useGroupStore } from '../stores/groupStore';
 import api from '../lib/api';
 
 export default function RootLayout() {
-    const { token, isLoading, login, loadToken } = useAuthStore();
+    const { token, isLoading, login, loadToken, isLoggingOut } = useAuthStore();
     const { group, setGroup } = useGroupStore();
     const [isFetchingUser, setIsFetchingUser] = useState(false);
 
@@ -35,12 +35,14 @@ export default function RootLayout() {
             }
         };
         fetchUser();
+        } else {
+            setIsFetchingUser(false);
         }
     }, [token, login, setGroup])
 
     // Routes the user will be sent to based on whether they have a token and group
     useEffect(() => {
-        if (!isLoading && !isFetchingUser) {
+        if (!isLoading && !isFetchingUser && !isLoggingOut) {
             if (token && group) {
                 router.replace('/(tabs)');
             } else if (token && !group) {
@@ -49,7 +51,7 @@ export default function RootLayout() {
                 router.replace('/login');
             }
         }
-    }, [token, isLoading, group, isFetchingUser]);
+    }, [token, isLoading, group, isFetchingUser, isLoggingOut]);
 
     return (
         <Stack>

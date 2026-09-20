@@ -52,6 +52,7 @@ function LoginScreen() {
         <TextInput
             style={authScreenStyles.input}
             placeholder="Email"
+            placeholderTextColor="#888888"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -61,6 +62,7 @@ function LoginScreen() {
         <TextInput
             style={authScreenStyles.input}
             placeholder="Password"
+            placeholderTextColor="#888888"
             value={password}
             onChangeText={setPassword}
             secureTextEntry

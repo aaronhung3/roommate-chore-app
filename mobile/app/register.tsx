@@ -53,6 +53,7 @@ function RegisterScreen() {
             <TextInput
                 style={authScreenStyles.input}
                 placeholder="Name"
+                placeholderTextColor="#888888"
                 value={name}
                 onChangeText={setName}
             />
@@ -60,6 +61,7 @@ function RegisterScreen() {
             <TextInput
                 style={authScreenStyles.input}
                 placeholder="Email"
+                placeholderTextColor="#888888"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -69,6 +71,7 @@ function RegisterScreen() {
             <TextInput
                 style={authScreenStyles.input}
                 placeholder="Password"
+                placeholderTextColor="#888888"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry

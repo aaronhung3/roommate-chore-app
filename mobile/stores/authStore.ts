@@ -11,6 +11,7 @@ interface AuthStore {
     user: User | null;
     token: string | null;
     isLoading: boolean;
+    isLoggingOut: boolean;
     login: (user: User, token: string) => Promise<void>;
     logout: () => Promise<void>;
     loadToken: () => Promise<void>;
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     user: null,
     token: null,
     isLoading: true,
+    isLoggingOut: false,
 
     login: async (user, token) => {
         await SecureStore.setItemAsync('token', token);
@@ -27,8 +29,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
     },
 
     logout: async () => {
+        set({ isLoggingOut: true });
         await SecureStore.deleteItemAsync('token');
-        set({ user: null, token: null });
+        set({ user: null, token: null, isLoggingOut: false });
     },
 
     loadToken: async () => {
